@@ -1,17 +1,38 @@
 # Carimbo+
 
-Aplicação Flask para controle de ocorrências de carimbos, seguindo a referência visual enviada.
+Aplicação local Python para controle de ocorrências de carimbos. O programa
+não usa Flask, servidor web, rotas ou API HTTP: ele roda diretamente no
+terminal e usa Microsoft Access via ODBC quando configurado.
 
-## Rodar no Replit
+## Estrutura
+
+```text
+main.py                         Entrada da aplicação local
+carimbo_control/
+  cli.py                        Menus e fluxo do terminal
+  config.py                     Configuração por ambiente
+  repositories.py               Access e repositório de demonstração
+  services.py                   Regras de autenticação e ocorrências
+tests/                          Testes automatizados
+.github/workflows/ci.yml        Verificações no GitHub Actions
+```
+
+## Rodar localmente
 
 ```bash
 uv run python main.py
 ```
 
-O preview usa dados locais quando `ACCESS_DB_PATH` não está definido. Para testar:
+No modo de demonstração:
 
 - Chapa: `123456`
 - Senha: `1234`
+
+Para executar os testes:
+
+```bash
+uv run python -m unittest discover -s tests -v
+```
 
 ## Microsoft Access
 
@@ -44,4 +65,11 @@ Ocorrencias
   criado_em   Data/Hora
 ```
 
-O Microsoft Access/driver ODBC é suportado normalmente em Windows. O preview Linux do Replit usa o repositório local para permitir desenvolvimento da interface e do fluxo enquanto o `.accdb` não estiver disponível.
+O driver Microsoft Access/ODBC normalmente está disponível em Windows. No
+Replit/Linux, use o modo de demonstração ou configure um driver compatível.
+O modo de demonstração pode ser desativado com `CARIMBO_DEMO=false`.
+
+## GitHub
+
+O repositório contém uma verificação automática em GitHub Actions para
+compilação e testes. Nenhum token ou senha é armazenado no código.
