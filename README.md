@@ -36,7 +36,7 @@ uv run python -m unittest discover -s tests -v
 
 ## Microsoft Access
 
-Configure o caminho do arquivo `.accdb` e o nome do driver ODBC no ambiente onde o app será executado:
+Tenho que configurar o caminho do arquivo `.accdb` e o nome do driver ODBC no ambiente onde o app será executado:
 
 ```bash
 ACCESS_DB_PATH=/caminho/para/carimbos.accdb
@@ -66,7 +66,7 @@ Ocorrencias
 ```
 
 O driver Microsoft Access/ODBC normalmente está disponível em Windows. No
-Replit/Linux, use o modo de demonstração ou configure um driver compatível.
+Replit/Linux, usar o modo de demonstração ou configurar um driver compatível.
 O modo de demonstração pode ser desativado com `CARIMBO_DEMO=false`.
 
 ## GitHub
