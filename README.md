@@ -71,5 +71,6 @@ O modo de demonstração pode ser desativado com `CARIMBO_DEMO=false`.
 
 ## GitHub
 
-O repositório contém uma verificação automática em GitHub Actions para
-compilação e testes. Nenhum token ou senha é armazenado no código.
+O repositório está organizado como um projeto Python local. Os testes podem
+ser executados diretamente com `uv run python -m unittest discover -s tests -v`.
+Nenhum token ou senha é armazenado no código.
