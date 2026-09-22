@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Nova ocorrência{% endblock %}
+{% block content %}
+<div class="simple-heading"><div><span class="eyebrow">REGISTRO</span><h1>Nova ocorrência</h1><p>Informe os dados para abrir uma solicitação de carimbo.</p></div><div class="protocol-pill">⌁ Registro rastreável</div></div>
+<form method="post" class="form-card">
+  <div class="form-card-header"><div class="form-step">01</div><div><h2>Detalhes da ocorrência</h2><p>Preencha os campos abaixo com atenção.</p></div></div>
+  <div class="form-grid"><label>Tipo de ocorrência<select name="type" required><option value="">Selecione uma opção</option><option>Funcionário novo</option><option>Carimbo perdido</option><option>Carimbo danificado</option><option>Troca de carimbo</option></select></label><label>Prioridade<select name="priority"><option>Baixa</option><option selected>Média</option><option>Alta</option></select></label><label class="full">Colaborador<input name="collaborator" value="{{ session.get('user', {}).get('name', '') }}" required></label><label class="full">Descrição<textarea name="description" rows="5" placeholder="Descreva o que aconteceu e qualquer informação importante..." required></textarea></label></div>
+  <div class="form-actions"><a href="{{ url_for('dashboard') }}" class="outline-button">Cancelar</a><button type="submit" class="primary-button">Registrar ocorrência&nbsp; ↗</button></div>
+</form>
+{% endblock %}
