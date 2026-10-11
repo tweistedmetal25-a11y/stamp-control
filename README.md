@@ -1,20 +1,19 @@
 # Carimbo+
 
-Aplicação local Python para controle de ocorrências de carimbos. O programa
-não usa Flask, servidor web, rotas ou API HTTP: ele roda diretamente no
-terminal e usa Microsoft Access via ODBC quando configurado.
+Aplicação desktop nativa Python para controle de ocorrências de carimbos,
+criada com PySide6/Qt. O programa não usa Flask, servidor web, rotas ou API
+HTTP e acessa Microsoft Access via ODBC quando configurado.
 
 ## Estrutura
 
 ```text
-main.py                         Entrada da aplicação local
+main.py                         Entrada da aplicação desktop
 carimbo_control/
-  cli.py                        Menus e fluxo do terminal
+  desktop.py                    Janelas e fluxo da interface Qt
   config.py                     Configuração por ambiente
   repositories.py               Access e repositório de demonstração
   services.py                   Regras de autenticação e ocorrências
 tests/                          Testes automatizados
-.github/workflows/ci.yml        Verificações no GitHub Actions
 ```
 
 ## Rodar localmente
@@ -23,7 +22,7 @@ tests/                          Testes automatizados
 uv run python main.py
 ```
 
-No modo de demonstração:
+No modo de demonstração, preencha o login:
 
 - Chapa: `123456`
 - Senha: `1234`
@@ -36,7 +35,7 @@ uv run python -m unittest discover -s tests -v
 
 ## Microsoft Access
 
-Tenho que configurar o caminho do arquivo `.accdb` e o nome do driver ODBC no ambiente onde o app será executado:
+Configure o caminho do arquivo `.accdb` e o nome do driver ODBC no ambiente onde o app será executado:
 
 ```bash
 ACCESS_DB_PATH=/caminho/para/carimbos.accdb
@@ -66,11 +65,12 @@ Ocorrencias
 ```
 
 O driver Microsoft Access/ODBC normalmente está disponível em Windows. No
-Replit/Linux, usar o modo de demonstração ou configurar um driver compatível.
+Replit/Linux, use o modo de demonstração ou configure um driver compatível.
 O modo de demonstração pode ser desativado com `CARIMBO_DEMO=false`.
+O workflow do Replit inicia a janela Qt em modo VNC.
 
 ## GitHub
 
-O repositório está organizado como um projeto Python local. Os testes podem
+O repositório está organizado como um projeto Python desktop. Os testes podem
 ser executados diretamente com `uv run python -m unittest discover -s tests -v`.
 Nenhum token ou senha é armazenado no código.
