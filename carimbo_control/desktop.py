@@ -25,7 +25,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .services import DEFAULT_PRIORITY, PRIORITIES, STATUSES, StampControlService
+from .services import (
+    DEFAULT_PRIORITY,
+    OCCURRENCE_TYPES,
+    OPERATOR_OCCURRENCE_TYPES,
+    PRIORITIES,
+    STATUSES,
+    StampControlService,
+)
 
 
 PURPLE = "#4724ad"
@@ -385,7 +392,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(1080, 700)
         self.resize(1440, 900)
         self._build()
-        self.show_page("Início")
+        self.show_page("Início" if self.service.is_admin() else "Nova ocorrência")
 
     def _build(self):
         root = QWidget()
@@ -678,9 +685,12 @@ class MainWindow(QMainWindow):
         type_column = QVBoxLayout()
         type_column.addWidget(self._label("TIPO DE OCORRÊNCIA"))
         self.occurrence_type = QComboBox()
-        self.occurrence_type.addItems(
-            ["Funcionário novo", "Carimbo perdido", "Carimbo danificado", "Troca de carimbo"]
+        allowed_types = (
+            OCCURRENCE_TYPES
+            if self.service.is_admin()
+            else OPERATOR_OCCURRENCE_TYPES
         )
+        self.occurrence_type.addItems(allowed_types)
         type_column.addWidget(self.occurrence_type)
         priority_column = QVBoxLayout()
         priority_column.addWidget(self._label("PRIORIDADE"))
@@ -704,7 +714,7 @@ class MainWindow(QMainWindow):
         self.collaborator = QLineEdit()
         self.collaborator.setText(self.service.current_user["name"])
         form.addWidget(self.collaborator)
-        form.addWidget(self._label("DESCRIÇÃO"))
+        form.addWidget(self._label("DESCRIÇÃO *"))
         self.description = QTextEdit()
         self.description.setPlaceholderText(
             "Descreva o que aconteceu e qualquer informação importante..."
@@ -755,6 +765,7 @@ class MainWindow(QMainWindow):
             360,
         )
         self.request_protocol = None
+        self._request_records_by_protocol = {}
         self.request_admin_panel = None
         card_layout.addWidget(self.requests_table)
         body = QHBoxLayout()
@@ -776,7 +787,7 @@ class MainWindow(QMainWindow):
     def _build_request_admin_panel(self):
         panel = QFrame()
         panel.setObjectName("card")
-        panel.setFixedWidth(245)
+        panel.setFixedWidth(300)
         form = QVBoxLayout(panel)
         form.setContentsMargins(17, 17, 17, 17)
         form.setSpacing(10)
@@ -787,6 +798,12 @@ class MainWindow(QMainWindow):
         self.request_protocol_label.setWordWrap(True)
         self.request_protocol_label.setObjectName("muted")
         form.addWidget(self.request_protocol_label)
+        form.addWidget(self._label("DESCRIÇÃO DA SOLICITAÇÃO"))
+        self.request_description = QTextEdit()
+        self.request_description.setReadOnly(True)
+        self.request_description.setPlaceholderText("Nenhuma descrição informada.")
+        self.request_description.setFixedHeight(120)
+        form.addWidget(self.request_description)
         form.addWidget(self._label("PRIORIDADE"))
         self.request_priority = QComboBox()
         self.request_priority.addItems(PRIORITIES)
@@ -929,7 +946,11 @@ class MainWindow(QMainWindow):
         if self.request_admin_panel:
             self.request_protocol = None
             self.request_protocol_label.setText("Selecione uma solicitação na tabela.")
+            self.request_description.clear()
             self.save_request_button.setEnabled(False)
+        self._request_records_by_protocol = {
+            item["protocol"]: item for item in records
+        }
         self.requests_count.setText(f"{len(records)} registro(s)")
         rows = [
             (
@@ -978,6 +999,10 @@ class MainWindow(QMainWindow):
             return
         self.request_protocol = self.requests_table.item(row, 0).text()
         collaborator = self.requests_table.item(row, 1).text()
+        record = self._request_records_by_protocol.get(self.request_protocol, {})
+        self.request_description.setPlainText(
+            record.get("description") or "Nenhuma descrição informada."
+        )
         status = self._status_for_editor(self.requests_table.item(row, 6).text())
         if status is None:
             self.request_protocol_label.setText(
