@@ -65,6 +65,19 @@ class DesktopInterfaceTests(unittest.TestCase):
         self.assertEqual(window.occurrence_type.currentText(), "Carimbo perdido")
         window.close()
 
+    def test_operator_opens_new_request_page_and_cannot_select_new_employee(self):
+        self.service.authenticate("654321", "1234")
+        window = MainWindow(self.service)
+
+        self.assertEqual(window.pages.currentIndex(), 1)
+        self.assertEqual(window.nav_buttons["Nova ocorrência"].isChecked(), True)
+        occurrence_types = [
+            window.occurrence_type.itemText(index)
+            for index in range(window.occurrence_type.count())
+        ]
+        self.assertNotIn("Funcionário novo", occurrence_types)
+        window.close()
+
     def test_operator_sees_only_owned_requests_without_admin_controls(self):
         self.service.authenticate("654321", "1234")
         window = MainWindow(self.service)
@@ -89,6 +102,11 @@ class DesktopInterfaceTests(unittest.TestCase):
             [window.request_status.itemText(index) for index in range(window.request_status.count())],
             ["Em andamento", "Concluído"],
         )
+        occurrence_types = [
+            window.occurrence_type.itemText(index)
+            for index in range(window.occurrence_type.count())
+        ]
+        self.assertIn("Funcionário novo", occurrence_types)
 
         row = next(
             index
@@ -98,6 +116,10 @@ class DesktopInterfaceTests(unittest.TestCase):
         window.requests_table.selectRow(row)
         self.app.processEvents()
         self.assertTrue(window.save_request_button.isEnabled())
+        self.assertEqual(
+            window.request_description.toPlainText(),
+            "Solicitação de substituição por desgaste.",
+        )
         protocol = window.request_protocol
         window.request_priority.setCurrentText("Alta")
         window.request_status.setCurrentText("Concluído")
