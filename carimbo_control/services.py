@@ -2,7 +2,8 @@ from .repositories import build_repository
 
 
 PRIORITIES = ("Baixa", "Média", "Alta")
-STATUSES = ("Em andamento", "Concluído", "Negado")
+STATUSES = ("Em andamento", "Concluído")
+DEFAULT_PRIORITY = "Média"
 
 
 class StampControlService:
@@ -63,6 +64,11 @@ class StampControlService:
     def create_occurrence(self, occurrence_type, description, priority, collaborator=None):
         if not self.current_user:
             raise RuntimeError("Faça login antes de registrar uma ocorrência.")
+        if self.is_admin():
+            if priority not in PRIORITIES:
+                raise ValueError("Prioridade inválida.")
+        else:
+            priority = DEFAULT_PRIORITY
         return self.repository.create_occurrence(
             self.current_user["chapa"],
             collaborator or self.current_user["name"],
@@ -84,9 +90,6 @@ class StampControlService:
                 status in {"Termo assinado", "Carimbo entregue"}
                 for status in statuses
             ),
-            "resolved": sum(
-                status in {"Finalizado", "Concluído", "Negado"}
-                for status in statuses
-            ),
+            "resolved": sum(status in {"Finalizado", "Concluído"} for status in statuses),
             "archived": 0,
         }
