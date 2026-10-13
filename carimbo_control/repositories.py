@@ -24,7 +24,7 @@ class MemoryRepository:
             "123456": {
                 "chapa": "123456",
                 "name": "João da Silva",
-                "role": "supervisor",
+                "role": "admin",
                 "department": "Produção",
                 "password": "1234",
             },
@@ -73,7 +73,7 @@ class MemoryRepository:
                 "chapa": "345678",
                 "type": "Carimbo danificado",
                 "description": "Carimbo com texto ilegível.",
-                "status": "Negado",
+                "status": "Em andamento",
                 "priority": "Média",
                 "created_at": "28/04/2025 10:20",
             },
@@ -123,7 +123,7 @@ class MemoryRepository:
                 for item in items
             ),
             "resolved": sum(
-                item["status"] in {"Finalizado", "Concluído", "Negado"}
+                item["status"] in {"Finalizado", "Concluído"}
                 for item in items
             ),
             "archived": 32,
@@ -261,7 +261,7 @@ class AccessRepository:
                 for item in items
             ),
             "resolved": sum(
-                item["status"] in {"Finalizado", "Concluído", "Negado"}
+                item["status"] in {"Finalizado", "Concluído"}
                 for item in items
             ),
             "archived": 0,
