@@ -33,7 +33,7 @@ class StampControlTests(unittest.TestCase):
             self.service.update_occurrence(
                 records[0]["protocol"],
                 "Alta",
-                "Negado",
+                "Em andamento",
             )
 
     def test_admin_can_see_and_update_any_request(self):
@@ -61,6 +61,8 @@ class StampControlTests(unittest.TestCase):
             self.service.update_occurrence(protocol, "Urgente", "Concluído")
         with self.assertRaises(ValueError):
             self.service.update_occurrence(protocol, "Alta", "Em análise")
+        with self.assertRaises(ValueError):
+            self.service.update_occurrence(protocol, "Alta", "Negado")
 
     def test_create_occurrence(self):
         self.service.authenticate("123456", "1234")
@@ -71,6 +73,16 @@ class StampControlTests(unittest.TestCase):
         )
         self.assertEqual(item["status"], "Em andamento")
         self.assertEqual(self.service.occurrences()[0]["protocol"], item["protocol"])
+
+    def test_operator_cannot_choose_priority_when_creating_request(self):
+        self.service.authenticate("654321", "1234")
+        item = self.service.create_occurrence(
+            "Carimbo danificado",
+            "Solicitação de demonstração",
+            "Alta",
+        )
+        self.assertEqual(item["priority"], "Média")
+        self.assertEqual(item["status"], "Em andamento")
 
 
 class AccessRepositoryUpdateTests(unittest.TestCase):
@@ -104,7 +116,7 @@ class AccessRepositoryUpdateTests(unittest.TestCase):
             updated = self.repository.update_occurrence(
                 "CAR-9999",
                 "Baixa",
-                "Negado",
+                "Em andamento",
             )
 
         self.assertFalse(updated)
