@@ -1,5 +1,6 @@
 import os
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -42,6 +43,48 @@ class DesktopInterfaceTests(unittest.TestCase):
         window.show_page("Nova ocorrência", preset_type="Carimbo perdido")
         self.assertEqual(window.pages.currentIndex(), 1)
         self.assertEqual(window.occurrence_type.currentText(), "Carimbo perdido")
+        window.close()
+
+    def test_operator_sees_only_owned_requests_without_admin_controls(self):
+        self.service.authenticate("654321", "1234")
+        window = MainWindow(self.service)
+        window.show_page("Minhas solicitações")
+
+        self.assertEqual(window.requests_table.rowCount(), 1)
+        self.assertEqual(window.requests_table.item(0, 2).text(), "654321")
+        self.assertIsNone(window.request_admin_panel)
+        self.assertNotIn("Central de notificações", window.nav_buttons)
+        window.close()
+
+    def test_admin_can_edit_priority_and_status_from_requests_page(self):
+        self.service.authenticate("123456", "1234")
+        window = MainWindow(self.service)
+        window.show_page("Solicitações da equipe")
+        self.assertEqual(window.requests_table.rowCount(), 4)
+        self.assertIsNotNone(window.request_admin_panel)
+
+        row = next(
+            index
+            for index in range(window.requests_table.rowCount())
+            if window.requests_table.item(index, 2).text() == "654321"
+        )
+        window.requests_table.selectRow(row)
+        self.app.processEvents()
+        self.assertTrue(window.save_request_button.isEnabled())
+        protocol = window.request_protocol
+        window.request_priority.setCurrentText("Alta")
+        window.request_status.setCurrentText("Negado")
+
+        with patch("carimbo_control.desktop.QMessageBox.information"):
+            window._save_request_changes()
+
+        updated = next(
+            item
+            for item in self.service.occurrences()
+            if item["protocol"] == protocol
+        )
+        self.assertEqual(updated["priority"], "Alta")
+        self.assertEqual(updated["status"], "Negado")
         window.close()
 
 
