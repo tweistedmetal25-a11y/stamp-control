@@ -1,6 +1,7 @@
 import unittest
+from unittest.mock import MagicMock, patch
 
-from carimbo_control.repositories import MemoryRepository
+from carimbo_control.repositories import AccessRepository, MemoryRepository
 from carimbo_control.services import StampControlService
 
 
@@ -70,6 +71,45 @@ class StampControlTests(unittest.TestCase):
         )
         self.assertEqual(item["status"], "Em andamento")
         self.assertEqual(self.service.occurrences()[0]["protocol"], item["protocol"])
+
+
+class AccessRepositoryUpdateTests(unittest.TestCase):
+    def setUp(self):
+        self.repository = AccessRepository("database.accdb", "Access Driver")
+        self.connection = MagicMock()
+        self.cursor = self.connection.__enter__.return_value.cursor.return_value
+        self.cursor.execute.return_value = self.cursor
+
+    def test_update_writes_priority_and_status_to_access(self):
+        self.cursor.fetchone.return_value = ("CAR-2025-0001",)
+        with patch.object(self.repository, "_connect", return_value=self.connection):
+            updated = self.repository.update_occurrence(
+                "CAR-2025-0001",
+                "Alta",
+                "Concluído",
+            )
+
+        self.assertTrue(updated)
+        update_call = self.cursor.execute.call_args_list[1]
+        self.assertIn("UPDATE Ocorrencias", update_call.args[0])
+        self.assertEqual(
+            update_call.args[1:],
+            ("Alta", "Concluído", "CAR-2025-0001"),
+        )
+        self.connection.__enter__.return_value.commit.assert_called_once()
+
+    def test_update_returns_false_when_protocol_does_not_exist(self):
+        self.cursor.fetchone.return_value = None
+        with patch.object(self.repository, "_connect", return_value=self.connection):
+            updated = self.repository.update_occurrence(
+                "CAR-9999",
+                "Baixa",
+                "Negado",
+            )
+
+        self.assertFalse(updated)
+        self.assertEqual(self.cursor.execute.call_count, 1)
+        self.connection.__enter__.return_value.commit.assert_not_called()
 
 
 if __name__ == "__main__":
