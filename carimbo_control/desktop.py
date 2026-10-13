@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .services import StampControlService
+from .services import PRIORITIES, STATUSES, StampControlService
 
 
 PURPLE = "#4724ad"
@@ -431,7 +431,7 @@ class MainWindow(QMainWindow):
             ("Nova ocorrência", "＋"),
             ("Minhas solicitações", "▤"),
         ]
-        if self.service.is_supervisor():
+        if self.service.is_admin():
             items.append(("Central de notificações", "♧"))
         items.append(("Como funciona?", "?"))
         for name, icon in items:
@@ -477,7 +477,7 @@ class MainWindow(QMainWindow):
         details = QVBoxLayout()
         name = QLabel(f"Chapa: {user.get('chapa', '—')}")
         name.setStyleSheet("font-size:10px;font-weight:800;")
-        role = QLabel("Responsável" if self.service.is_supervisor() else "Operador")
+        role = QLabel("Administrador" if self.service.is_admin() else "Operador")
         role.setStyleSheet("font-size:9px;color:#898599;")
         details.addWidget(name)
         details.addWidget(role)
@@ -710,7 +710,7 @@ class MainWindow(QMainWindow):
         scroll, layout = self._scroll_page()
         heading = QHBoxLayout()
         heading.addWidget(page_title(
-            "Solicitações da equipe" if self.service.is_supervisor() else "Minhas solicitações",
+            "Solicitações da equipe" if self.service.is_admin() else "Minhas solicitações",
             "Acompanhe o andamento de cada ocorrência registrada.",
         ), 1)
         create = make_button("＋ Nova ocorrência")
@@ -736,10 +736,53 @@ class MainWindow(QMainWindow):
             [],
             360,
         )
+        self.request_protocol = None
+        self.request_admin_panel = None
         card_layout.addWidget(self.requests_table)
-        layout.addWidget(card)
+        body = QHBoxLayout()
+        body.setSpacing(14)
+        body.addWidget(card, 1)
+        if self.service.is_admin():
+            self.requests_table.setSelectionMode(
+                QTableWidget.SelectionMode.SingleSelection
+            )
+            self.requests_table.itemSelectionChanged.connect(
+                self._load_selected_request
+            )
+            self.request_admin_panel = self._build_request_admin_panel()
+            body.addWidget(self.request_admin_panel)
+        layout.addLayout(body)
         layout.addStretch()
         return scroll
+
+    def _build_request_admin_panel(self):
+        panel = QFrame()
+        panel.setObjectName("card")
+        panel.setFixedWidth(245)
+        form = QVBoxLayout(panel)
+        form.setContentsMargins(17, 17, 17, 17)
+        form.setSpacing(10)
+        title = QLabel("Gerenciar solicitação")
+        title.setObjectName("sectionTitle")
+        form.addWidget(title)
+        self.request_protocol_label = QLabel("Selecione uma solicitação na tabela.")
+        self.request_protocol_label.setWordWrap(True)
+        self.request_protocol_label.setObjectName("muted")
+        form.addWidget(self.request_protocol_label)
+        form.addWidget(self._label("PRIORIDADE"))
+        self.request_priority = QComboBox()
+        self.request_priority.addItems(PRIORITIES)
+        form.addWidget(self.request_priority)
+        form.addWidget(self._label("STATUS"))
+        self.request_status = QComboBox()
+        self.request_status.addItems(STATUSES)
+        form.addWidget(self.request_status)
+        form.addStretch()
+        self.save_request_button = make_button("Salvar alterações")
+        self.save_request_button.setEnabled(False)
+        self.save_request_button.clicked.connect(self._save_request_changes)
+        form.addWidget(self.save_request_button)
+        return panel
 
     def _notifications_page(self):
         scroll, layout = self._scroll_page()
@@ -840,9 +883,11 @@ class MainWindow(QMainWindow):
             "Central de notificações": 3,
             "Como funciona?": 4,
         }
-        if name == "Central de notificações" and not self.service.is_supervisor():
+        if name == "Central de notificações" and not self.service.is_admin():
             QMessageBox.warning(self, "Acesso restrito", "Esta área é exclusiva para responsáveis autorizados.")
             return
+        if name == "Solicitações da equipe" and not self.service.is_admin():
+            name = "Minhas solicitações"
         self.pages.setCurrentIndex(page_map.get(name, 0))
         nav_name = "Minhas solicitações" if name == "Solicitações da equipe" else name
         for nav, button in self.nav_buttons.items():
@@ -860,6 +905,10 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.critical(self, "Erro", f"Não foi possível carregar as solicitações:\n{exc}")
             records = []
+        if self.request_admin_panel:
+            self.request_protocol = None
+            self.request_protocol_label.setText("Selecione uma solicitação na tabela.")
+            self.save_request_button.setEnabled(False)
         self.requests_count.setText(f"{len(records)} registro(s)")
         rows = [
             (
@@ -874,6 +923,68 @@ class MainWindow(QMainWindow):
             for item in records
         ]
         self._fill_table(self.requests_table, rows)
+
+    @staticmethod
+    def _status_for_editor(status):
+        if status in STATUSES:
+            return status
+        normalized = str(status).strip().casefold()
+        if normalized in {
+            "concluido",
+            "concluído",
+            "finalizado",
+            "carimbo entregue",
+            "termo assinado",
+        }:
+            return "Concluído"
+        if normalized in {"negado", "recusado"}:
+            return "Negado"
+        return "Em andamento"
+
+    def _load_selected_request(self):
+        if not self.service.is_admin() or not self.request_admin_panel:
+            return
+        row = self.requests_table.currentRow()
+        if row < 0 or self.requests_table.item(row, 0) is None:
+            self.request_protocol = None
+            self.request_protocol_label.setText("Selecione uma solicitação na tabela.")
+            self.save_request_button.setEnabled(False)
+            return
+        self.request_protocol = self.requests_table.item(row, 0).text()
+        collaborator = self.requests_table.item(row, 1).text()
+        self.request_protocol_label.setText(
+            f"{self.request_protocol}\n{collaborator}"
+        )
+        priority = self.requests_table.item(row, 4).text()
+        if priority not in PRIORITIES:
+            priority = "Média"
+        status = self._status_for_editor(self.requests_table.item(row, 6).text())
+        self.request_priority.setCurrentText(priority)
+        self.request_status.setCurrentText(status)
+        self.save_request_button.setEnabled(True)
+
+    def _save_request_changes(self):
+        if not self.service.is_admin() or not self.request_protocol:
+            return
+        try:
+            self.service.update_occurrence(
+                self.request_protocol,
+                self.request_priority.currentText(),
+                self.request_status.currentText(),
+            )
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Falha ao atualizar",
+                f"Não foi possível salvar as alterações:\n{exc}",
+            )
+            return
+        QMessageBox.information(
+            self,
+            "Solicitação atualizada",
+            f"A solicitação {self.request_protocol} foi atualizada.",
+        )
+        self._refresh_requests()
 
     def _refresh_notifications(self):
         try:
@@ -912,7 +1023,13 @@ class MainWindow(QMainWindow):
                 item = QTableWidgetItem(str(value))
                 item.setToolTip(str(value))
                 if col_index == len(row) - 1:
-                    item.setForeground(Qt.GlobalColor.darkGreen if value == "Finalizado" else Qt.GlobalColor.darkBlue)
+                    if value in {"Concluído", "Finalizado"}:
+                        color = Qt.GlobalColor.darkGreen
+                    elif value == "Negado":
+                        color = Qt.GlobalColor.darkRed
+                    else:
+                        color = Qt.GlobalColor.darkBlue
+                    item.setForeground(color)
                 table.setItem(row_index, col_index, item)
         table.resizeColumnsToContents()
 
