@@ -4,6 +4,17 @@ from .repositories import build_repository
 PRIORITIES = ("Baixa", "Média", "Alta")
 STATUSES = ("Em andamento", "Concluído")
 DEFAULT_PRIORITY = "Média"
+OCCURRENCE_TYPES = (
+    "Funcionário novo",
+    "Carimbo perdido",
+    "Carimbo danificado",
+    "Troca de carimbo",
+)
+OPERATOR_OCCURRENCE_TYPES = tuple(
+    occurrence_type
+    for occurrence_type in OCCURRENCE_TYPES
+    if occurrence_type != "Funcionário novo"
+)
 
 
 class StampControlService:
@@ -64,6 +75,19 @@ class StampControlService:
     def create_occurrence(self, occurrence_type, description, priority, collaborator=None):
         if not self.current_user:
             raise RuntimeError("Faça login antes de registrar uma ocorrência.")
+        occurrence_type = str(occurrence_type).strip()
+        description = (description or "").strip()
+        if not description:
+            raise ValueError("A descrição é obrigatória.")
+        if occurrence_type not in OCCURRENCE_TYPES:
+            raise ValueError("Tipo de ocorrência inválido.")
+        if (
+            occurrence_type not in OPERATOR_OCCURRENCE_TYPES
+            and not self.is_admin()
+        ):
+            raise PermissionError(
+                "Somente administradores podem registrar funcionário novo."
+            )
         if self.is_admin():
             if priority not in PRIORITIES:
                 raise ValueError("Prioridade inválida.")
