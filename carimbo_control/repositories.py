@@ -43,7 +43,7 @@ class MemoryRepository:
                 "chapa": "123456",
                 "type": "Carimbo perdido",
                 "description": "Carimbo de inspeção não localizado no setor.",
-                "status": "Em análise",
+                "status": "Em andamento",
                 "priority": "Alta",
                 "created_at": "29/04/2025 09:15",
             },
@@ -53,7 +53,7 @@ class MemoryRepository:
                 "chapa": "654321",
                 "type": "Troca de carimbo",
                 "description": "Solicitação de substituição por desgaste.",
-                "status": "Carimbo entregue",
+                "status": "Concluído",
                 "priority": "Média",
                 "created_at": "29/04/2025 08:30",
             },
@@ -63,7 +63,7 @@ class MemoryRepository:
                 "chapa": "789012",
                 "type": "Funcionário novo",
                 "description": "Cadastro de carimbo para novo colaborador.",
-                "status": "Termo assinado",
+                "status": "Concluído",
                 "priority": "Baixa",
                 "created_at": "28/04/2025 16:45",
             },
@@ -73,7 +73,7 @@ class MemoryRepository:
                 "chapa": "345678",
                 "type": "Carimbo danificado",
                 "description": "Carimbo com texto ilegível.",
-                "status": "Finalizado",
+                "status": "Negado",
                 "priority": "Média",
                 "created_at": "28/04/2025 10:20",
             },
@@ -97,22 +97,35 @@ class MemoryRepository:
             "chapa": chapa,
             "type": occurrence_type,
             "description": description,
-            "status": "Em análise",
+            "status": "Em andamento",
             "priority": priority,
             "created_at": datetime.now().strftime("%d/%m/%Y %H:%M"),
         }
         self.occurrences.insert(0, item)
         return item
 
+    def update_occurrence(self, protocol, priority, status):
+        for item in self.occurrences:
+            if item["protocol"] == protocol:
+                item["priority"] = priority
+                item["status"] = status
+                return True
+        return False
+
     def stats(self):
         items = self.occurrences
         return {
-            "new": sum(item["status"] == "Em análise" for item in items),
+            "new": sum(
+                item["status"] in {"Em análise", "Em andamento"} for item in items
+            ),
             "pending": sum(
                 item["status"] in {"Termo assinado", "Carimbo entregue"}
                 for item in items
             ),
-            "resolved": sum(item["status"] == "Finalizado" for item in items),
+            "resolved": sum(
+                item["status"] in {"Finalizado", "Concluído", "Negado"}
+                for item in items
+            ),
             "archived": 32,
         }
 
@@ -209,21 +222,48 @@ class AccessRepository:
                 occurrence_type,
                 description,
                 priority,
-                "Em análise",
+                "Em andamento",
                 datetime.now(),
             )
             connection.commit()
         return {"protocol": protocol}
 
+    def update_occurrence(self, protocol, priority, status):
+        with self._connect() as connection:
+            cursor = connection.cursor()
+            exists = cursor.execute(
+                "SELECT protocolo FROM Ocorrencias WHERE protocolo = ?",
+                protocol,
+            ).fetchone()
+            if not exists:
+                return False
+            cursor.execute(
+                """
+                UPDATE Ocorrencias
+                SET prioridade = ?, status = ?
+                WHERE protocolo = ?
+                """,
+                priority,
+                status,
+                protocol,
+            )
+            connection.commit()
+        return True
+
     def stats(self):
         items = self.list_occurrences()
         return {
-            "new": sum(item["status"] == "Em análise" for item in items),
+            "new": sum(
+                item["status"] in {"Em análise", "Em andamento"} for item in items
+            ),
             "pending": sum(
                 item["status"] in {"Termo assinado", "Carimbo entregue"}
                 for item in items
             ),
-            "resolved": sum(item["status"] == "Finalizado" for item in items),
+            "resolved": sum(
+                item["status"] in {"Finalizado", "Concluído", "Negado"}
+                for item in items
+            ),
             "archived": 0,
         }
 
