@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .services import PRIORITIES, STATUSES, StampControlService
+from .services import DEFAULT_PRIORITY, PRIORITIES, STATUSES, StampControlService
 
 
 PURPLE = "#4724ad"
@@ -303,11 +303,20 @@ class LoginWindow(QWidget):
         login_button.setMinimumHeight(43)
         login_button.clicked.connect(self._authenticate)
         card_layout.addWidget(login_button)
+        self.demo_access_label = None
         if self.service.mode == "demonstração":
-            demo = QLabel("Demonstração  ·  Chapa 123456  ·  Senha 1234")
+            demo = QLabel(
+                "ACESSOS DE DEMONSTRAÇÃO\n"
+                "Operador · Chapa 654321 · Senha 1234\n"
+                "Administrador · Chapa 123456 · Senha 1234"
+            )
             demo.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            demo.setStyleSheet("color:#624ca8;background:#f2efff;border-radius:6px;padding:9px;font-size:10px;")
+            demo.setStyleSheet(
+                "color:#624ca8;background:#f2efff;border-radius:6px;"
+                "padding:9px;font-size:10px;"
+            )
             card_layout.addWidget(demo)
+            self.demo_access_label = demo
         footer = QLabel(f"Versão 1.2.0  ·  Ambiente {self.service.mode}")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         footer.setStyleSheet("color:#9b98a8;font-size:9px;margin-top:8px;")
@@ -676,9 +685,18 @@ class MainWindow(QMainWindow):
         priority_column = QVBoxLayout()
         priority_column.addWidget(self._label("PRIORIDADE"))
         self.priority = QComboBox()
-        self.priority.addItems(["Baixa", "Média", "Alta"])
-        self.priority.setCurrentText("Média")
-        priority_column.addWidget(self.priority)
+        self.priority.addItems(PRIORITIES)
+        self.priority.setCurrentText(DEFAULT_PRIORITY)
+        self.priority_info = None
+        if self.service.is_admin():
+            priority_column.addWidget(self.priority)
+        else:
+            self.priority_info = QLabel(
+                "A prioridade inicial será definida pelo administrador."
+            )
+            self.priority_info.setObjectName("muted")
+            self.priority_info.setWordWrap(True)
+            priority_column.addWidget(self.priority_info)
         row.addLayout(type_column, 2)
         row.addLayout(priority_column, 1)
         form.addLayout(row)
@@ -776,6 +794,9 @@ class MainWindow(QMainWindow):
         form.addWidget(self._label("STATUS"))
         self.request_status = QComboBox()
         self.request_status.addItems(STATUSES)
+        self.request_status.currentIndexChanged.connect(
+            self._sync_request_save_enabled
+        )
         form.addWidget(self.request_status)
         form.addStretch()
         self.save_request_button = make_button("Salvar alterações")
@@ -930,6 +951,13 @@ class MainWindow(QMainWindow):
             return status
         normalized = str(status).strip().casefold()
         if normalized in {
+            "em análise",
+            "em analise",
+            "novo",
+            "aberto",
+        }:
+            return "Em andamento"
+        if normalized in {
             "concluido",
             "concluído",
             "finalizado",
@@ -937,9 +965,7 @@ class MainWindow(QMainWindow):
             "termo assinado",
         }:
             return "Concluído"
-        if normalized in {"negado", "recusado"}:
-            return "Negado"
-        return "Em andamento"
+        return None
 
     def _load_selected_request(self):
         if not self.service.is_admin() or not self.request_admin_panel:
@@ -952,19 +978,39 @@ class MainWindow(QMainWindow):
             return
         self.request_protocol = self.requests_table.item(row, 0).text()
         collaborator = self.requests_table.item(row, 1).text()
-        self.request_protocol_label.setText(
-            f"{self.request_protocol}\n{collaborator}"
-        )
+        status = self._status_for_editor(self.requests_table.item(row, 6).text())
+        if status is None:
+            self.request_protocol_label.setText(
+                f"{self.request_protocol}\n{collaborator}\n"
+                "Status antigo: escolha uma opção atual para salvar."
+            )
+            self.request_status.setCurrentIndex(-1)
+        else:
+            self.request_protocol_label.setText(
+                f"{self.request_protocol}\n{collaborator}"
+            )
+            self.request_status.setCurrentText(status)
         priority = self.requests_table.item(row, 4).text()
         if priority not in PRIORITIES:
-            priority = "Média"
-        status = self._status_for_editor(self.requests_table.item(row, 6).text())
+            priority = DEFAULT_PRIORITY
         self.request_priority.setCurrentText(priority)
-        self.request_status.setCurrentText(status)
-        self.save_request_button.setEnabled(True)
+        self._sync_request_save_enabled()
+
+    def _sync_request_save_enabled(self):
+        self.save_request_button.setEnabled(
+            bool(
+                self.service.is_admin()
+                and self.request_protocol
+                and self.request_status.currentText() in STATUSES
+            )
+        )
 
     def _save_request_changes(self):
-        if not self.service.is_admin() or not self.request_protocol:
+        if (
+            not self.service.is_admin()
+            or not self.request_protocol
+            or self.request_status.currentText() not in STATUSES
+        ):
             return
         try:
             self.service.update_occurrence(
@@ -1025,8 +1071,6 @@ class MainWindow(QMainWindow):
                 if col_index == len(row) - 1:
                     if value in {"Concluído", "Finalizado"}:
                         color = Qt.GlobalColor.darkGreen
-                    elif value == "Negado":
-                        color = Qt.GlobalColor.darkRed
                     else:
                         color = Qt.GlobalColor.darkBlue
                     item.setForeground(color)
@@ -1035,7 +1079,7 @@ class MainWindow(QMainWindow):
 
     def _clear_occurrence_form(self):
         self.occurrence_type.setCurrentIndex(0)
-        self.priority.setCurrentText("Média")
+        self.priority.setCurrentText(DEFAULT_PRIORITY)
         self.collaborator.setText(self.service.current_user["name"])
         self.description.clear()
 
