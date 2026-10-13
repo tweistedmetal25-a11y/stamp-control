@@ -84,6 +84,24 @@ class StampControlTests(unittest.TestCase):
         self.assertEqual(item["priority"], "Média")
         self.assertEqual(item["status"], "Em andamento")
 
+    def test_operator_cannot_register_new_employee_occurrence(self):
+        self.service.authenticate("654321", "1234")
+        with self.assertRaises(PermissionError):
+            self.service.create_occurrence(
+                "Funcionário novo",
+                "Solicitação de demonstração",
+                "Média",
+            )
+
+    def test_occurrence_description_is_required(self):
+        self.service.authenticate("123456", "1234")
+        with self.assertRaises(ValueError):
+            self.service.create_occurrence(
+                "Carimbo perdido",
+                "   ",
+                "Média",
+            )
+
 
 class AccessRepositoryUpdateTests(unittest.TestCase):
     def setUp(self):
