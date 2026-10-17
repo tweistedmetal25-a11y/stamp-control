@@ -1,9 +1,10 @@
 """Interface gráfica nativa Qt para o sistema Carimbo+."""
 
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -106,7 +107,56 @@ QLineEdit, QComboBox, QTextEdit {
     color: #211b43; background: white; border: 1px solid #e0dce9;
     border-radius: 6px; padding: 9px 11px; selection-background-color: #7652d5;
 }
-QLineEdit:focus, QComboBox:focus, QTextEdit:focus { border: 1px solid #7652d5; }
+QComboBox {
+    padding-right: 34px;
+    selection-background-color: #eeeaff;
+    selection-color: #211b43;
+}
+QComboBox:hover { border-color: #c8bce8; }
+QLineEdit:focus, QComboBox:focus, QTextEdit:focus {
+    border: 1px solid #7652d5;
+    outline: none;
+}
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 30px;
+    border: none;
+    border-left: 1px solid #e8e5f0;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    background: #f8f7fc;
+}
+QComboBox::down-arrow {
+    image: none;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid #5b4b79;
+}
+QComboBox QAbstractItemView {
+    color: #211b43;
+    background: white;
+    border: 1px solid #ded9ea;
+    outline: none;
+    padding: 4px;
+    selection-background-color: #eeeaff;
+    selection-color: #211b43;
+}
+QComboBox QAbstractItemView::item {
+    min-height: 28px;
+    padding: 6px 10px;
+    border: none;
+}
+QComboBox QAbstractItemView::item:selected {
+    color: #211b43;
+    background: #eeeaff;
+}
+QComboBox QAbstractItemView::item:hover {
+    color: #211b43;
+    background: #f5f2ff;
+}
 QLabel#fieldLabel { color: #45405f; font-size: 10px; font-weight: 800; }
 QTableWidget {
     background: white; border: none; gridline-color: #f0eef5;
@@ -126,15 +176,23 @@ QMessageBox { background: white; }
 """
 
 
-class BrandMark(QLabel):
-    def __init__(self, light=False, parent=None):
-        super().__init__("✦", parent)
-        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setFixedSize(42, 42)
-        self.setStyleSheet(
-            f"color:{'white' if light else PURPLE}; border:2px solid "
-            f"{'white' if light else '#6b4be7'}; border-radius:21px; font-size:21px;"
+def image_logo(asset_name, width, height):
+    asset_path = Path(__file__).resolve().parent / "assets" / asset_name
+    pixmap = QPixmap(str(asset_path))
+    if pixmap.isNull():
+        raise FileNotFoundError(f"Logo não encontrado ou inválido: {asset_path}")
+    label = QLabel()
+    label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    label.setFixedSize(width, height)
+    label.setPixmap(
+        pixmap.scaled(
+            width,
+            height,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
         )
+    )
+    return label
 
 
 def eyebrow(text):
@@ -212,12 +270,7 @@ class LoginWindow(QWidget):
         promo_layout = QVBoxLayout(promo)
         promo_layout.setContentsMargins(58, 50, 48, 35)
         brand_row = QHBoxLayout()
-        brand_row.addWidget(BrandMark(light=True))
-        brand_text = QVBoxLayout()
-        company = QLabel("KROMBERG\n& SCHUBERT")
-        company.setStyleSheet("color:white;font-size:18px;font-weight:800;")
-        brand_text.addWidget(company)
-        brand_row.addLayout(brand_text)
+        brand_row.addWidget(image_logo("logo_stamp.png", 82, 72))
         brand_row.addStretch()
         promo_layout.addLayout(brand_row)
         promo_layout.addSpacing(55)
@@ -270,10 +323,7 @@ class LoginWindow(QWidget):
         card_layout.setContentsMargins(40, 34, 40, 25)
         card_layout.setSpacing(13)
         card_brand = QHBoxLayout()
-        card_brand.addWidget(BrandMark())
-        card_company = QLabel("KROMBERG\n& SCHUBERT")
-        card_company.setStyleSheet("font-size:16px;font-weight:850;color:#211b43;")
-        card_brand.addWidget(card_company)
+        card_brand.addWidget(image_logo("logo_kroschu.png", 250, 90))
         card_brand.addStretch()
         card_layout.addLayout(card_brand)
         divider = QFrame()
@@ -426,7 +476,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(14, 19, 14, 15)
         layout.setSpacing(8)
         brand_row = QHBoxLayout()
-        brand_row.addWidget(BrandMark(light=True))
+        brand_row.addWidget(image_logo("logo_stamp.png", 54, 48))
         brand_stack = QVBoxLayout()
         title = QLabel("CARIMBO+")
         title.setObjectName("brandTitle")
