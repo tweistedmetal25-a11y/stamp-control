@@ -252,7 +252,7 @@ class LoginWindow(QWidget):
         super().__init__()
         self.service = service
         self.setWindowTitle("Carimbo+ · Acesso seguro")
-        self.setMinimumSize(880, 610)
+        self.setMinimumSize(800, 600)
         self.resize(1160, 730)
         self._build()
 
@@ -311,19 +311,20 @@ class LoginWindow(QWidget):
         root.addWidget(promo, 5)
 
         panel = QWidget()
-        panel.setStyleSheet("background:#faf9fc;")
+        panel.setObjectName("loginPanel")
+        panel.setStyleSheet("QWidget#loginPanel{background:#faf9fc;}")
         panel_layout = QVBoxLayout(panel)
-        panel_layout.setContentsMargins(42, 32, 42, 32)
+        panel_layout.setContentsMargins(24, 20, 24, 20)
         panel_layout.addStretch()
         card = QFrame()
         card.setObjectName("card")
         card.setMaximumWidth(470)
         card.setStyleSheet("QFrame#card{background:white;border:1px solid #ece9f2;border-radius:15px;}")
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(40, 34, 40, 25)
-        card_layout.setSpacing(13)
+        card_layout.setContentsMargins(24, 22, 24, 20)
+        card_layout.setSpacing(9)
         card_brand = QHBoxLayout()
-        card_brand.addWidget(image_logo("logo_kroschu.png", 250, 90))
+        card_brand.addWidget(image_logo("logo_kroschu.png", 230, 82))
         card_brand.addStretch()
         card_layout.addLayout(card_brand)
         divider = QFrame()
@@ -333,10 +334,11 @@ class LoginWindow(QWidget):
         card_layout.addSpacing(8)
         card_layout.addWidget(eyebrow("Acesso seguro"))
         heading = QLabel("Entre no sistema")
-        heading.setStyleSheet("font-size:27px;font-weight:800;color:#211b43;")
+        heading.setStyleSheet("font-size:25px;font-weight:800;color:#211b43;")
         card_layout.addWidget(heading)
         hint = QLabel("Use seus dados corporativos para continuar.")
         hint.setObjectName("muted")
+        hint.setWordWrap(True)
         card_layout.addWidget(hint)
         card_layout.addSpacing(14)
         card_layout.addWidget(self._field_label("CHAPA"))
@@ -1196,12 +1198,12 @@ class MainWindow(QMainWindow):
             self.close()
             self.login_window = LoginWindow(self.service)
             self.login_window.authenticated.connect(self._reopen_main)
-            self.login_window.show()
+            self.login_window.showFullScreen()
 
     def _reopen_main(self):
         self.login_window.close()
         self.main_window = MainWindow(self.service)
-        self.main_window.show()
+        self.main_window.showFullScreen()
 
 
 class DesktopApplication:
@@ -1219,13 +1221,13 @@ class DesktopApplication:
     def start(self):
         self.login_window = LoginWindow(self.service)
         self.login_window.authenticated.connect(self.open_main)
-        self.login_window.show()
+        self.login_window.showFullScreen()
         return self.qt_app.exec()
 
     def open_main(self):
         self.login_window.close()
         self.main_window = MainWindow(self.service)
-        self.main_window.show()
+        self.main_window.showFullScreen()
 
 
 def run():
