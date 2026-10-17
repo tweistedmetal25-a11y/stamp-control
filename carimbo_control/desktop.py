@@ -166,6 +166,9 @@ QHeaderView::section {
     background: #fbfaff; color: #6f6b85; border: none;
     border-bottom: 1px solid #ece9f2; padding: 10px 8px; font-size: 10px; font-weight: 800;
 }
+QTableCornerButton::section {
+    background: #fbfaff; border: none; border-bottom: 1px solid #ece9f2;
+}
 QTableWidget::item { padding: 8px; border-bottom: 1px solid #f0eef5; }
 QScrollArea { border: none; background: transparent; }
 QLabel#noticeTitle { color: white; font-size: 18px; font-weight: 800; }
@@ -353,7 +356,26 @@ class LoginWindow(QWidget):
         self.password.setPlaceholderText("Digite sua senha")
         self.password.setEchoMode(QLineEdit.EchoMode.Password)
         self.password.returnPressed.connect(self._authenticate)
-        card_layout.addWidget(self.password)
+        password_row = QHBoxLayout()
+        password_row.setSpacing(6)
+        password_row.addWidget(self.password, 1)
+        self.toggle_password_button = QPushButton("◉")
+        self.toggle_password_button.setObjectName("togglePasswordButton")
+        self.toggle_password_button.setCheckable(True)
+        self.toggle_password_button.setFixedSize(40, 38)
+        self.toggle_password_button.setToolTip("Mostrar senha")
+        self.toggle_password_button.setAccessibleName("Mostrar senha")
+        self.toggle_password_button.setStyleSheet(
+            "QPushButton#togglePasswordButton{background:white;color:#6f6687;"
+            "border:1px solid #e0dce9;border-radius:6px;font-size:17px;}"
+            "QPushButton#togglePasswordButton:hover{color:#4724ad;"
+            "border-color:#c8bce8;}"
+            "QPushButton#togglePasswordButton:checked{color:#4724ad;"
+            "background:#f2efff;}"
+        )
+        self.toggle_password_button.toggled.connect(self._toggle_password_visibility)
+        password_row.addWidget(self.toggle_password_button)
+        card_layout.addLayout(password_row)
         self.error_label = QLabel()
         self.error_label.setStyleSheet("color:#ba3045;font-size:11px;")
         self.error_label.setWordWrap(True)
@@ -408,6 +430,14 @@ class LoginWindow(QWidget):
             return
         self.error_label.clear()
         self.authenticated.emit()
+
+    def _toggle_password_visibility(self, visible):
+        self.password.setEchoMode(
+            QLineEdit.EchoMode.Normal if visible else QLineEdit.EchoMode.Password
+        )
+        action = "Ocultar" if visible else "Mostrar"
+        self.toggle_password_button.setToolTip(f"{action} senha")
+        self.toggle_password_button.setAccessibleName(f"{action} senha")
 
 
 class MetricCard(QFrame):
@@ -1198,12 +1228,12 @@ class MainWindow(QMainWindow):
             self.close()
             self.login_window = LoginWindow(self.service)
             self.login_window.authenticated.connect(self._reopen_main)
-            self.login_window.showFullScreen()
+            self.login_window.showMaximized()
 
     def _reopen_main(self):
         self.login_window.close()
         self.main_window = MainWindow(self.service)
-        self.main_window.showFullScreen()
+        self.main_window.showMaximized()
 
 
 class DesktopApplication:
@@ -1221,13 +1251,13 @@ class DesktopApplication:
     def start(self):
         self.login_window = LoginWindow(self.service)
         self.login_window.authenticated.connect(self.open_main)
-        self.login_window.showFullScreen()
+        self.login_window.showMaximized()
         return self.qt_app.exec()
 
     def open_main(self):
         self.login_window.close()
         self.main_window = MainWindow(self.service)
-        self.main_window.showFullScreen()
+        self.main_window.showMaximized()
 
 
 def run():
